@@ -1,0 +1,29 @@
+---
+- hosts: server
+  become: yes
+  tasks:
+
+    # Update addons
+    - name: Deploy addon files from Github repository
+      git:
+        repo: "{{deployment_url}}"
+        dest: "/home/{{admin_account}}/odoo/addons/"
+        key_file: /root/.ssh/github_deploy
+        accept_hostkey: yes
+        force: yes
+        version: main
+      become: no
+    
+    - name: update permissions on addons folder
+      shell: "chown -R odoo:odooers /home/{{admin_account}}/odoo"
+
+    # - name: stop odoo
+    #   service:
+    #     name: odoo
+    #     state: stopped
+
+    - name: Update the addons
+      shell: "odoo -c /etc/odoo/odoo.conf --no-http --stop-after-init --update=all,muk_web_theme"
+
+    # - name: start odoo
+    #   shell: systemctl start odoo

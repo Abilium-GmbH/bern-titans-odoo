@@ -1,0 +1,267 @@
+---
+- hosts: server
+  become: yes
+  tasks:
+    - name: Create backup script directory
+      file:
+        path: "/home/{{admin_account}}/backup"
+        state: directory
+
+    # This public key is set on Github repo Settings under "Deploy keys"
+    - name: Upload the private key used for Github cloning
+      copy: src=~/abiliumCloud/Administration/Accounts/deployment_keys/git@abilium.com dest="/home/{{admin_account}}/.ssh/git@abilium.com"
+
+    - name: Correct SSH deploy key permissions
+      file: dest="/home/{{admin_account}}/.ssh/git@abilium.com" mode=0600
+
+    - lineinfile:
+        path: /etc/sudoers
+        state: present
+        regexp: '^abilimin ALL='
+        line: 'abilimin ALL=(ALL) NOPASSWD: ALL'
+        validate: '/usr/sbin/visudo -cf %s'
+        insertafter: EOF
+
+    - name: Update apt-get repo and cache
+      apt: update_cache=yes force_apt_get=yes cache_valid_time=3600
+
+    - name: Upgrade all apt packages
+      apt: upgrade=dist force_apt_get=yes
+
+    - name: Ensure postgresql is installed
+      apt: name=postgresql state=present
+
+    - name: Ensure postgresql-contrib is installed
+      apt: name=postgresql-contrib state=present
+
+    - name: Ensure git is installed
+      apt: name=git state=present
+     
+    - name: Ensure libpq-dev is installed
+      apt: name=libpq-dev state=present
+
+    - name: Ensure python3-dev is installed
+      apt: name=python3-dev state=present
+
+    - name: Ensure python3-pip is installed
+      apt: name=python3-pip state=present
+
+    - name: Ensure gcc is installed
+      apt: name=gcc state=present
+  
+    - name: Ensure libsasl2-dev is installed
+      apt: name=libsasl2-dev state=present
+
+    - name: Ensure libldap2-dev is installed
+      apt: name=libldap2-dev state=present
+
+    - name: Ensure libssl-dev is installed
+      apt: name=libssl-dev state=present
+
+    - name: Make sure psycopg2 is installed
+      pip:
+        name: psycopg2
+        state: present
+    - name: Make sure xlwt is installed
+      pip:
+        name: xlwt
+        state: present
+    - name: Make sure num2words is installed
+      pip:
+        name: num2words
+        state: present
+
+    - name: Make sure python-ldap is installed
+      pip:
+        name: python-ldap
+        state: present
+    - name: ansible create odoo lib directory
+      file:
+        path: /var/lib/odoo
+        state: directory
+
+    - name: Create the odoo linux user
+      user:
+        name: odoo
+        state: present
+        createhome: no
+  
+    - name: Create group odooers
+      group: 
+        name: odooers
+        state: present
+
+    - name: Add admin to group odooers
+      shell: "usermod -aG odooers {{admin_account}}"
+
+    - name: Add odoo to group odooers
+      shell: "usermod -aG odooers odoo"
+
+    - name: Remove directory
+      file:
+        path: "/home/{{admin_account}}/odoo/addons"
+        state: absent
+
+    - name: Creates addons directory
+      file:
+        path: "/home/{{admin_account}}/odoo/addons"
+        state: directory
+        owner: odoo
+        group: odooers
+        mode: u+rwx,g+rwx,o-rwx
+        recurse: yes
+
+    - name: Create the odoo db user
+      postgresql_user:
+        name: odoo
+        password: odoo
+        encrypted: True
+        role_attr_flags: "CREATEDB,NOCREATEROLE,NOSUPERUSER"
+      become_user: postgres
+      become: true
+
+    - name: Install prerequisites for Ansible to install .deb via apt module
+      apt: name=xz-utils state=present
+
+    - name: copy wkhtmltopdf to server
+      copy:
+        src: ./wkhtmltox_0.12.5-1.focal_amd64.deb
+        dest: /root/wkhtmltopdf.deb
+        owner: root
+        group: root
+    - name: install wkhtmltopdf
+      apt: deb="/root/wkhtmltopdf.deb" state=present
+
+    - name: copy odoo.deb to server
+      copy:
+        src: ./odoo_15.0.latest_all.deb
+        dest: /root/odoo.deb
+        owner: root
+        group: root
+
+    - name: Install odoo 
+      apt: deb="/root/odoo.deb" state=present
+
+    - name: copy odoo.conf to server
+      copy:
+        src: ./odoo.conf
+        dest: /etc/odoo/odoo.conf
+        owner: odoo
+        group: odoo
+
+    - name: replace admin account name in odoo.conf
+      replace:
+        path: /etc/odoo/odoo.conf
+        regexp: ADMIN_ACCOUNT
+        replace: "{{admin_account}}"
+
+    - name: stop odoo
+      service:
+        name: odoo
+        state: stopped
+
+    - name: delete the db to restore
+      shell: >
+        sudo service postgresql restart &&
+        sudo su postgres -c "dropdb {{odoo_db_name}}"
+      ignore_errors: yes
+      when: drop_db | bool
+
+    - name: Create a new db 
+      shell: "sudo su -l odoo -s /bin/bash -c \"odoo --no-http -d {{odoo_db_name}} -i {{odoo_modules_to_install}} --stop-after-init  --without-demo all\""
+      when: drop_db | bool
+    
+    - name: start odoo
+      service:
+        name: odoo
+        state: started
+
+    - name: Install pexpect
+      pip:
+        name: pexpect
+
+    - name: Change admin user
+      become: true
+      expect:
+        command: sudo su -l odoo -s /bin/bash -c "odoo shell -d {{odoo_db_name}}"
+        responses:
+          '>>> ':
+            - user = env['res.users'].search([('login', '=', 'admin')])
+            - user.name = '{{odoo_admin_name}}'
+            - user.login = '{{odoo_admin_username}}'
+            - user.password = '{{odoo_admin_password}}'
+            - self.env.cr.commit()
+            - quit()
+    
+    - name: Ensure nginx is installed
+      apt: name=nginx state=present
+
+    - name: copy nginx config to server
+      copy:
+        src: ./nginx-site-available.conf
+        dest: "/etc/nginx/sites-available/{{domain_name}}"
+
+    - replace:
+        path: "/etc/nginx/sites-available/{{domain_name}}"
+        regexp: 'DOMAIN_NAME'
+        replace: "{{domain_name}}"
+
+    - name: create symlink
+      file:
+        src: "/etc/nginx/sites-available/{{domain_name}}"
+        dest: "/etc/nginx/sites-enabled/{{domain_name}}"
+        state: link
+
+    - name: check that default server is removed
+      file:
+        path: /etc/nginx/sites-enabled/default
+        state: absent
+
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+    - name: Ensure snapd is installed
+      apt: name=snapd state=present
+
+    - name: Install certbot
+      snap:
+        name: certbot
+        classic: yes
+    
+    - name: create ssl cert
+      shell: "certbot --nginx -d {{domain_name}} --agree-tos --non-interactive -m {{ssl_email}}"
+
+    - replace:
+        path: "/etc/nginx/sites-available/{{domain_name}}"
+        regexp: '#FINALIZE '
+        replace: ""
+
+    - name: restart nginx
+      service:
+        name: nginx
+        state: restarted
+
+    - name: Allow port 80
+      ufw:
+        rule: allow
+        port: "80"
+    - name: Allow port 443
+      ufw:
+        rule: allow
+        port: "443"
+    - name: Allow port 22
+      ufw:
+        rule: allow
+        port: "22"
+    - name: limit ssh port
+      ufw: 
+        rule: limit
+        port: "22"
+        proto: tcp
+
+    - name: enable ufw and deny all
+      ufw:
+        state: enabled
+        policy: deny
