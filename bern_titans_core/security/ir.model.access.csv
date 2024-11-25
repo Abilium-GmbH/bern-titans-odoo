@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_partner_group,Partner Groups,model_partner_group,,1,1,1,1
+access_ref_licence,Ref Licence,model_ref_licence,,1,1,1,1
+bern_titans_core.access_partner_answer,access_partner_answer,bern_titans_core.model_partner_answer,,1,1,1,1

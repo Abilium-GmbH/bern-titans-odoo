@@ -160,16 +160,8 @@
         name: odoo
         state: stopped
 
-    - name: delete the db to restore
-      shell: >
-        sudo service postgresql restart &&
-        sudo su postgres -c "dropdb {{odoo_db_name}}"
-      ignore_errors: yes
-      when: drop_db | bool
-
     - name: Create a new db 
       shell: "sudo su -l odoo -s /bin/bash -c \"odoo --no-http -d {{odoo_db_name}} -i {{odoo_modules_to_install}} --stop-after-init  --without-demo all\""
-      when: drop_db | bool
     
     - name: start odoo
       service:

@@ -8,10 +8,10 @@
       git:
         repo: "{{deployment_url}}"
         dest: "/home/{{admin_account}}/odoo/addons/"
-        key_file: /root/.ssh/github_deploy
+        key_file: /home/abilimin/.ssh/git@abilium.com
         accept_hostkey: yes
         force: yes
-        version: main
+        version: master
       become: no
     
     - name: update permissions on addons folder
@@ -25,5 +25,5 @@
     - name: Update the addons
       shell: "odoo -c /etc/odoo/odoo.conf --no-http --stop-after-init --update=all,muk_web_theme"
 
-    # - name: start odoo
-    #   shell: systemctl start odoo
+    - name: start odoo
+      shell: service odoo restart

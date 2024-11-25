@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="group_id_train_men" model="partner.group">
+            <field name="name">Training Herren</field>
+            <field name="color_id">11</field>
+            <field name="color_name">Tomate</field>
+        </record>
+
+        <record id="group_id_train_women" model="partner.group">
+            <field name="name">Training Damen</field>
+            <field name="color_id">9</field>
+            <field name="color_name">Heidelbeere</field>
+        </record>
+
+        <record id="group_id_nl_men" model="partner.group">
+            <field name="name">NL - Herren</field>
+            <field name="color_id">6</field>
+            <field name="color_name">Mandarine</field>
+        </record>
+
+        <record id="group_id_nl_women" model="partner.group">
+            <field name="name">NL - Damen</field>
+            <field name="color_id">1</field>
+            <field name="color_name">Lavendel</field>
+        </record>
+
+        <record id="group_id_bern_titans" model="partner.group">
+            <field name="name">Bern Titans</field>
+            <field name="color_id">5</field>
+            <field name="color_name">Banane</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<odoo>
+    <data>
+        <record id="view_calendar_event_form_inherit" model="ir.ui.view">
+            <field name="name">Bern Titans Calendar Fields</field>
+            <field name="model">calendar.event</field>
+            <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='description']" position="after">
+                    <label for="partner_answers"/>
+                    <field name="partner_answers" widget="one2many" mode="tree" readonly="0">
+                        <tree string="Mitgliederantworten" editable="top" create="true" delete="true">
+                            <field name="partner_id" />
+                            <field name="answer" readonly="1"/>
+                            <button name="do_unknown" string="Uncertain" type="object" icon="fa-asterisk" />
+                            <button name="do_participate" string="Accept" type="object" icon="fa-check text-success"/>
+                            <button name="do_decline" string="Decline" type="object" icon="fa-times-circle text-danger"/>
+                        </tree>
+                    </field>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_calendar_event_form_inherit_2" model="ir.ui.view">
+            <field name="name">Google Calendar Fields</field>
+            <field name="model">calendar.event</field>
+            <field name="inherit_id" ref="calendar.view_calendar_event_form"/>
+            <field name="arch" type="xml">
+                <xpath expr="//field[@name='user_id']" position="after">
+                    <field name="group_ids" widget="many2many" mode="tree">
+                        <tree editable="bottom">
+                            <field name="name"/>
+                        </tree>
+                    </field>
+                </xpath>
+            </field>
+        </record>
+    </data>
+</odoo>
